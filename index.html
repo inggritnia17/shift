@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Manajemen Shift Satpam</title>
+    <meta name="description" content="Aplikasi manajemen shift satpam dengan fitur absensi foto">
+    <meta name="theme-color" content="#5D5CDE">
+    
+    <!-- PWA Manifest -->
+     <link rel="manifest" href="manifest.json">
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registered: ', registration);
+                    })
+                    .catch(error => {
+                        console.log('Service Worker registration failed: ', error);
+                    });
+            });
+        }
+    </script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                        'primary-dark': '#4A49B8'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+        }
+        
+        .custom-input {
+            transition: all 0.3s ease;
+        }
+        
+        .custom-input:focus {
+            box-shadow: 0 0 0 3px rgba(93, 92, 222, 0.1);
+        }
+        
+        .camera-preview {
+            max-width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 0.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-nav {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                z-index: 50;
+            }
+        }
+    </style>
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
+    <!-- Login Page -->
+    <div id="loginPage" class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700">
+                <div class="text-center mb-8">
+                    <div class="mx-auto w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-shield-alt text-white text-2xl"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Sistem Shift Satpam</h1>
+                    <p class="text-gray-600 dark:text-gray-400 mt-2">Masuk ke akun Anda</p>
+                </div>
+                
+                <form id="loginForm" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">ID Pegawai</label>
+                        <input type="text" id="loginId" class="custom-input w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Masukkan ID Pegawai" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Password</label>
+                        <input type="password" id="loginPassword" class="custom-input w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Masukkan Password" required>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 px-4 rounded-lg transition duration-300 text-base">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Masuk
+                    </button>
+                </form>
+                
+                <div class="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Demo Login:</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Admin: admin/admin123</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Satpam: satpam001/satpam123</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard" class="hidden">
+        <!-- Admin Header -->
+        <header class="bg-white dark:bg-gray-800 shadow-lg border-b border-gray-200 dark:border-gray-700">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-shield-alt text-white text-sm"></i>
+                        </div>
+                        <h1 class="text-xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-600 dark:text-gray-400" id="adminWelcome">Welcome, Admin</span>
+                        <button onclick="logout()" class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Admin Navigation -->
+        <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex space-x-8 overflow-x-auto">
+                    <button onclick="showAdminTab('shifts')" class="admin-tab-btn py-4 px-2 border-b-2 border-primary text-primary font-medium text-sm whitespace-nowrap">
+                        <i class="fas fa-calendar-alt mr-2"></i>Kelola Shift
+                    </button>
+                    <button onclick="showAdminTab('requests')" class="admin-tab-btn py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium text-sm whitespace-nowrap">
+                        <i class="fas fa-exchange-alt mr-2"></i>Permintaan Ganti
+                    </button>
+                    <button onclick="showAdminTab('attendance')" class="admin-tab-btn py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium text-sm whitespace-nowrap">
+                        <i class="fas fa-user-check mr-2"></i>Absensi
+                    </button>
+                    <button onclick="showAdminTab('reports')" class="admin-tab-btn py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium text-sm whitespace-nowrap">
+                        <i class="fas fa-chart-bar mr-2"></i>Laporan
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Admin Content -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <!-- Kelola Shift Tab -->
+            <div id="adminShiftsTab" class="admin-tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Add New Shift -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+                            <i class="fas fa-plus-circle mr-2 text-primary"></i>Tambah Shift Baru
+                        </h3>
+                        <form id="addShiftForm" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Satpam</label>
+                                <select id="shiftGuardId" class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                    <option value="">Pilih Satpam</option>
+                                    <option value="satpam001">Budi Santoso (ID: satpam001)</option>
+                                    <option value="satpam002">Andi Wijaya (ID: satpam002)</option>
+                                    <option value="satpam003">Sari Dewi (ID: satpam003)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tanggal</label>
+                                <input type="date" id="shiftDate" class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Jam Mulai</label>
+                                    <input type="time" id="shiftStartTime" class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Jam Selesai</label>
+                                    <input type="time" id="shiftEndTime" class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Lokasi</label>
+                                <select id="shiftLocation" class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required>
+                                    <option value="">Pilih Lokasi</option>
+                                    <option value="lobby">Lobby Utama</option>
+                                    <option value="parking">Area Parkir</option>
+                                    <option value="entrance">Pintu Masuk Utama</option>
+                                    <option value="backyard">Halaman Belakang</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+                                <i class="fas fa-save mr-2"></i>Simpan Shift
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Auto Generate Shifts -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+                            <i class="fas fa-robot mr-2 text-primary"></i>Generate Shift Otomatis
+                        </h3>
+                        <form id="autoGenerateForm" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Periode</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <input type="date" id="autoStartDate" class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required>
+                                    <input type="date" id="autoEndDate" class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pola Shift</label>
+                                <select id="shiftPattern" class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required>
+                                    <option value="">Pilih Pola</option>
+                                    <option value="rotating_8h">Rotasi 8 Jam (3 Shift)</option>
+                                    <option value="rotating_12h">Rotasi 12 Jam (2 Shift)</option>
+                                    <option value="fixed_day">Shift Tetap Siang</option>
+                                    <option value="fixed_night">Shift Tetap Malam</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+                                <i class="fas fa-magic mr-2"></i>Generate Shift
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Shift List -->
+                <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            <i class="fas fa-list mr-2 text-primary"></i>Daftar Shift
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <div id="shiftsList" class="space-y-4">
+                            <!-- Shifts will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Permintaan Ganti Tab -->
+            <div id="adminRequestsTab" class="admin-tab-content hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            <i class="fas fa-exchange-alt mr-2 text-primary"></i>Permintaan Ganti Shift
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <div id="requestsList" class="space-y-4">
+                            <!-- Requests will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Absensi Tab -->
+            <div id="adminAttendanceTab" class="admin-tab-content hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            <i class="fas fa-user-check mr-2 text-primary"></i>Data Absensi
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <div id="attendanceList" class="space-y-4">
+                            <!-- Attendance will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Laporan Tab -->
+            <div id="adminReportsTab" class="admin-tab-content hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400">
+                                <i class="fas fa-users text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Satpam</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="totalGuards">3</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400">
+                                <i class="fas fa-check-circle text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Hadir Hari Ini</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="todayPresent">2</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-400">
+                                <i class="fas fa-exchange-alt text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Permintaan Pending</p>
+                                <p class="text-2xl font-semibold text-gray-900 dark:text-white" id="pendingRequests">1</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            <i class="fas fa-chart-bar mr-2 text-primary"></i>Laporan Mingguan
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <div id="weeklyReport" class="space-y-4">
+                            <!-- Weekly report will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Guard Dashboard -->
+    <div id="guardDashboard" class="hidden">
+        <!-- Guard Header -->
+        <header class="bg-white dark:bg-gray-800 shadow-lg border-b border-gray-200 dark:border-gray-700">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-user-shield text-white text-sm"></i>
+                        </div>
+                        <h1 class="text-xl font-bold text-gray-900 dark:text-white">Dashboard Satpam</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-600 dark:text-gray-400" id="guardWelcome">Welcome, Satpam</span>
+                        <button onclick="logout()" class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Guard Navigation -->
+        <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 md:block hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex space-x-8 overflow-x-auto">
+                    <button onclick="showGuardTab('schedule')" class="guard-tab-btn py-4 px-2 border-b-2 border-primary text-primary font-medium text-sm whitespace-nowrap">
+                        <i class="fas fa-calendar mr-2"></i>Jadwal Saya
+                    </button>
+                    <button onclick="showGuardTab('attendance')" class="guard-tab-btn py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium text-sm whitespace-nowrap">
+                        <i class="fas fa-camera mr-2"></i>Absensi
+                    </button>
+                    <button onclick="showGuardTab('exchange')" class="guard-tab-btn py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium text-sm whitespace-nowrap">
+                        <i class="fas fa-exchange-alt mr-2"></i>Ganti Shift
+                    </button>
+                    <button onclick="showGuardTab('info')" class="guard-tab-btn py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium text-sm whitespace-nowrap">
+                        <i class="fas fa-info-circle mr-2"></i>Info
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Mobile Bottom Navigation -->
+        <nav class="mobile-nav bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 md:hidden">
+            <div class="flex">
+                <button onclick="showGuardTab('schedule')" class="guard-mobile-tab flex-1 py-3 px-1 text-center border-t-2 border-primary text-primary text-xs">
+                    <i class="fas fa-calendar block mb-1"></i>
+                    <span>Jadwal</span>
+                </button>
+                <button onclick="showGuardTab('attendance')" class="guard-mobile-tab flex-1 py-3 px-1 text-center border-t-2 border-transparent text-gray-500 dark:text-gray-400 text-xs">
+                    <i class="fas fa-camera block mb-1"></i>
+                    <span>Absensi</span>
+                </button>
+                <button onclick="showGuardTab('exchange')" class="guard-mobile-tab flex-1 py-3 px-1 text-center border-t-2 border-transparent text-gray-500 dark:text-gray-400 text-xs">
+                    <i class="fas fa-exchange-alt block mb-1"></i>
+                    <span>Ganti</span>
+                </button>
+                <button onclick="showGuardTab('info')" class="guard-mobile-tab flex-1 py-3 px-1 text-center border-t-2 border-transparent text-gray-500 dark:text-gray-400 text-xs">
+                    <i class="fas fa-info-circle block mb-1"></i>
+                    <span>Info</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Guard Content -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 md:pb-6">
+            <!-- Jadwal Saya Tab -->
+            <div id="guardScheduleTab" class="guard-tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Today's Shift -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+                            <i class="fas fa-clock mr-2 text-primary"></i>Shift Hari Ini
+                        </h3>
+                        <div id="todayShift" class="space-y-3">
+                            <!-- Today's shift will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Upcoming Shifts -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+                            <i class="fas fa-calendar-week mr-2 text-primary"></i>Shift Mendatang
+                        </h3>
+                        <div id="upcomingShifts" class="space-y-3">
+                            <!-- Upcoming shifts will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Absensi Tab -->
+            <div id="guardAttendanceTab" class="guard-tab-content hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+                        <i class="fas fa-camera mr-2 text-primary"></i>Absensi Foto
+                    </h3>
+                    
+                    <div class="space-y-6">
+                        <!-- Camera Section -->
+                        <div class="text-center">
+                            <div id="cameraContainer" class="mb-4">
+                                <video id="cameraStream" class="camera-preview mx-auto border-2 border-gray-300 dark:border-gray-600" style="display:none;" autoplay></video>
+                                <div id="photoPreview" class="hidden">
+                                    <img id="capturedPhoto" class="camera-preview mx-auto border-2 border-gray-300 dark:border-gray-600" alt="Captured photo">
+                                </div>
+                            </div>
+                            
+                            <div class="space-x-4">
+                                <button id="startCameraBtn" onclick="startCamera()" class="bg-primary hover:bg-primary-dark text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+                                    <i class="fas fa-video mr-2"></i>Buka Kamera
+                                </button>
+                                <button id="captureBtn" onclick="capturePhoto()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300" style="display:none;">
+                                    <i class="fas fa-camera mr-2"></i>Ambil Foto
+                                </button>
+                                <button id="retakeBtn" onclick="retakePhoto()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300" style="display:none;">
+                                    <i class="fas fa-redo mr-2"></i>Foto Ulang
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Attendance Form -->
+                        <form id="attendanceForm" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Jenis Absensi</label>
+                                <select id="attendanceType" class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required>
+                                    <option value="">Pilih Jenis</option>
+                                    <option value="clock_in">Check In</option>
+                                    <option value="clock_out">Check Out</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Catatan (Opsional)</label>
+                                <textarea id="attendanceNotes" class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white" rows="3" placeholder="Tambahkan catatan jika diperlukan"></textarea>
+                            </div>
+                            
+                            <button type="submit" class="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-2 px-4 rounded-lg transition duration-300" disabled id="submitAttendanceBtn">
+                                <i class="fas fa-save mr-2"></i>Simpan Absensi
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Attendance History -->
+                <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            <i class="fas fa-history mr-2 text-primary"></i>Riwayat Absensi
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <div id="attendanceHistory" class="space-y-4">
+                            <!-- Attendance history will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ganti Shift Tab -->
+            <div id="guardExchangeTab" class="guard-tab-content hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Request Shift Exchange -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+                            <i class="fas fa-exchange-alt mr-2 text-primary"></i>Ajukan Ganti Shift
+                        </h3>
+                        <form id="exchangeRequestForm" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Shift yang ingin diganti</label>
+                                <select id="exchangeShiftId" class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required>
+                                    <option value="">Pilih shift</option>
+                                    <!-- Will be populated with user's shifts -->
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Ganti dengan satpam</label>
+                                <select id="exchangeWithGuard" class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required>
+                                    <option value="">Pilih satpam</option>
+                                    <option value="satpam002">Andi Wijaya</option>
+                                    <option value="satpam003">Sari Dewi</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Alasan</label>
+                                <textarea id="exchangeReason" class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white" rows="3" placeholder="Jelaskan alasan permintaan ganti shift" required></textarea>
+                            </div>
+                            
+                            <button type="submit" class="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+                                <i class="fas fa-paper-plane mr-2"></i>Kirim Permintaan
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- My Exchange Requests -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+                            <i class="fas fa-list mr-2 text-primary"></i>Permintaan Saya
+                        </h3>
+                        <div id="myExchangeRequests" class="space-y-4">
+                            <!-- Exchange requests will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Tab -->
+            <div id="guardInfoTab" class="guard-tab-content hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Profile Info -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+                            <i class="fas fa-user mr-2 text-primary"></i>Profil Saya
+                        </h3>
+                        <div id="guardProfile" class="space-y-3">
+                            <!-- Profile info will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Guidelines -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+                            <i class="fas fa-book mr-2 text-primary"></i>Panduan Satpam
+                        </h3>
+                        <div class="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                            <div class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                <span>Selalu lakukan absensi foto saat check in dan check out</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                <span>Periksa jadwal shift secara rutin</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                <span>Ajukan permintaan ganti shift minimal 24 jam sebelumnya</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                <span>Laporkan situasi darurat segera ke admin</span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                <span>Patroli area sesuai dengan jadwal yang ditentukan</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Emergency Contacts -->
+                <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+                        <i class="fas fa-phone mr-2 text-primary"></i>Kontak Darurat
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex items-center p-4 bg-red-50 dark:bg-red-900 rounded-lg">
+                            <i class="fas fa-phone-alt text-red-600 dark:text-red-400 mr-3"></i>
+                            <div>
+                                <p class="font-medium text-red-900 dark:text-red-100">Polisi</p>
+                                <p class="text-red-700 dark:text-red-300">110</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
+                            <i class="fas fa-phone-alt text-blue-600 dark:text-blue-400 mr-3"></i>
+                            <div>
+                                <p class="font-medium text-blue-900 dark:text-blue-100">Supervisor</p>
+                                <p class="text-blue-700 dark:text-blue-300">0821-1234-5678</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center p-4 bg-green-50 dark:bg-green-900 rounded-lg">
+                            <i class="fas fa-phone-alt text-green-600 dark:text-green-400 mr-3"></i>
+                            <div>
+                                <p class="font-medium text-green-900 dark:text-green-100">Security Control</p>
+                                <p class="text-green-700 dark:text-green-300">0812-9876-5432</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center p-4 bg-yellow-50 dark:bg-yellow-900 rounded-lg">
+                            <i class="fas fa-phone-alt text-yellow-600 dark:text-yellow-400 mr-3"></i>
+                            <div>
+                                <p class="font-medium text-yellow-900 dark:text-yellow-100">Ambulans</p>
+                                <p class="text-yellow-700 dark:text-yellow-300">118</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Custom Modal for confirmations -->
+    <div id="customModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-sm w-full mx-4">
+            <div id="modalIcon" class="text-center mb-4">
+                <i class="fas fa-question-circle text-4xl text-primary"></i>
+            </div>
+            <p id="modalMessage" class="text-gray-700 dark:text-gray-300 mb-4 text-center"></p>
+            <div class="flex justify-center space-x-3">
+                <button id="modalCancelBtn" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">Batal</button>
+                <button id="modalConfirmBtn" class="px-4 py-2 bg-primary text-white hover:bg-primary-dark rounded">Konfirmasi</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentUser = null;
+        let mediaStream = null;
+        let capturedPhotoData = null;
+
+        // Dark mode detection
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+            setupEventListeners();
+        });
+
+        function initializeApp() {
+            // Initialize sample data if not exists
+            if (!localStorage.getItem('guards')) {
+                initializeSampleData();
+            }
+            
+            // Check if user is logged in
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showDashboard();
+            } else {
+                showLoginPage();
+            }
+        }
+
+        function initializeSampleData() {
+            const sampleData = {
+                guards: [
+                    {
+                        id: 'admin',
+                        name: 'Administrator',
+                        password: 'admin123',
+                        role: 'admin',
+                        phone: '0812-1234-5678',
+                        email: 'admin@company.com'
+                    },
+                    {
+                        id: 'satpam001',
+                        name: 'Budi Santoso',
+                        password: 'satpam123',
+                        role: 'guard',
+                        phone: '0821-1111-1111',
+                        email: 'budi@company.com',
+                        joinDate: '2024-01-15'
+                    },
+                    {
+                        id: 'satpam002',
+                        name: 'Andi Wijaya',
+                        password: 'satpam123',
+                        role: 'guard',
+                        phone: '0821-2222-2222',
+                        email: 'andi@company.com',
+                        joinDate: '2024-02-01'
+                    },
+                    {
+                        id: 'satpam003',
+                        name: 'Sari Dewi',
+                        password: 'satpam123',
+                        role: 'guard',
+                        phone: '0821-3333-3333',
+                        email: 'sari@company.com',
+                        joinDate: '2024-03-01'
+                    }
+                ],
+                shifts: [],
+                attendance: [],
+                exchangeRequests: []
+            };
+            
+            Object.keys(sampleData).forEach(key => {
+                localStorage.setItem(key, JSON.stringify(sampleData[key]));
+            });
+        }
+
+        function setupEventListeners() {
+            // Login form
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            
+            // Admin forms
+            document.getElementById('addShiftForm').addEventListener('submit', handleAddShift);
+            document.getElementById('autoGenerateForm').addEventListener('submit', handleAutoGenerate);
+            
+            // Guard forms
+            document.getElementById('attendanceForm').addEventListener('submit', handleAttendance);
+            document.getElementById('exchangeRequestForm').addEventListener('submit', handleExchangeRequest);
+        }
+
+        // Custom modal functions
+        function showCustomModal(message, type = 'question', onConfirm = null) {
+            const modal = document.getElementById('customModal');
+            const messageEl = document.getElementById('modalMessage');
+            const iconEl = document.getElementById('modalIcon');
+            const confirmBtn = document.getElementById('modalConfirmBtn');
+            const cancelBtn = document.getElementById('modalCancelBtn');
+            
+            messageEl.textContent = message;
+            
+            // Set icon based on type
+            if (type === 'success') {
+                iconEl.innerHTML = '<i class="fas fa-check-circle text-4xl text-green-500"></i>';
+                cancelBtn.style.display = 'none';
+            } else if (type === 'error') {
+                iconEl.innerHTML = '<i class="fas fa-times-circle text-4xl text-red-500"></i>';
+                cancelBtn.style.display = 'none';
+            } else {
+                iconEl.innerHTML = '<i class="fas fa-question-circle text-4xl text-primary"></i>';
+                cancelBtn.style.display = 'inline-block';
+            }
+            
+            modal.classList.remove('hidden');
+            
+            const closeModal = () => {
+                modal.classList.add('hidden');
+            };
+            
+            confirmBtn.onclick = () => {
+                closeModal();
+                if (onConfirm) onConfirm();
+            };
+            
+            cancelBtn.onclick = closeModal;
+        }
+
+        // Authentication functions
+        function handleLogin(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('loginId').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            const guards = JSON.parse(localStorage.getItem('guards') || '[]');
+            const user = guards.find(g => g.id === id && g.password === password);
+            
+            if (user) {
+                currentUser = user;
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                showDashboard();
+            } else {
+                showCustomModal('ID Pegawai atau password salah!', 'error');
+            }
+        }
+
+        function logout() {
+            showCustomModal('Apakah Anda yakin ingin keluar?', 'question', () => {
+                currentUser = null;
+                localStorage.removeItem('currentUser');
+                
+                // Stop camera if active
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                    mediaStream = null;
+                }
+                
+                showLoginPage();
+            });
+        }
+
+        function showLoginPage() {
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('adminDashboard').classList.add('hidden');
+            document.getElementById('guardDashboard').classList.add('hidden');
+            
+            // Clear form
+            document.getElementById('loginForm').reset();
+        }
+
+        function showDashboard() {
+            document.getElementById('loginPage').classList.add('hidden');
+            
+            if (currentUser.role === 'admin') {
+                document.getElementById('adminDashboard').classList.remove('hidden');
+                document.getElementById('guardDashboard').classList.add('hidden');
+                document.getElementById('adminWelcome').textContent = `Welcome, ${currentUser.name}`;
+                loadAdminData();
+            } else {
+                document.getElementById('guardDashboard').classList.remove('hidden');
+                document.getElementById('adminDashboard').classList.add('hidden');
+                document.getElementById('guardWelcome').textContent = `Welcome, ${currentUser.name}`;
+                loadGuardData();
+            }
+        }
+
+        // Admin functions
+        function showAdminTab(tabName) {
+            // Hide all admin tabs
+            const tabs = document.querySelectorAll('.admin-tab-content');
+            tabs.forEach(tab => tab.classList.add('hidden'));
+            
+            // Show selected tab
+            document.getElementById(`admin${tabName.charAt(0).toUpperCase() + tabName.slice(1)}Tab`).classList.remove('hidden');
+            
+            // Update tab buttons
+            const buttons = document.querySelectorAll('.admin-tab-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('border-primary', 'text-primary');
+                btn.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400', 'dark:hover:text-gray-300');
+            });
+            
+            event.target.classList.add('border-primary', 'text-primary');
+            event.target.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400', 'dark:hover:text-gray-300');
+            
+            // Load tab-specific data
+            if (tabName === 'shifts') loadShifts();
+            else if (tabName === 'requests') loadExchangeRequests();
+            else if (tabName === 'attendance') loadAttendanceData();
+            else if (tabName === 'reports') loadReportsData();
+        }
+
+        function handleAddShift(e) {
+            e.preventDefault();
+            
+            const shifts = JSON.parse(localStorage.getItem('shifts') || '[]');
+            const newShift = {
+                id: Date.now().toString(),
+                guardId: document.getElementById('shiftGuardId').value,
+                date: document.getElementById('shiftDate').value,
+                startTime: document.getElementById('shiftStartTime').value,
+                endTime: document.getElementById('shiftEndTime').value,
+                location: document.getElementById('shiftLocation').value,
+                status: 'scheduled',
+                createdAt: new Date().toISOString()
+            };
+            
+            shifts.push(newShift);
+            localStorage.setItem('shifts', JSON.stringify(shifts));
+            
+            showCustomModal('Shift berhasil ditambahkan!', 'success');
+            document.getElementById('addShiftForm').reset();
+            loadShifts();
+        }
+
+        function handleAutoGenerate(e) {
+            e.preventDefault();
+            
+            const startDate = new Date(document.getElementById('autoStartDate').value);
+            const endDate = new Date(document.getElementById('autoEndDate').value);
+            const pattern = document.getElementById('shiftPattern').value;
+            
+            const shifts = JSON.parse(localStorage.getItem('shifts') || '[]');
+            const guards = JSON.parse(localStorage.getItem('guards') || '[]').filter(g => g.role === 'guard');
+            
+            let generatedShifts = [];
+            
+            for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+                const dateStr = date.toISOString().split('T')[0];
+                
+                // Check if shifts already exist for this date
+                const existingShifts = shifts.filter(s => s.date === dateStr);
+                if (existingShifts.length > 0) continue;
+                
+                if (pattern === 'rotating_8h') {
+                    // 3 shifts: 06:00-14:00, 14:00-22:00, 22:00-06:00
+                    const shiftTimes = [
+                        { start: '06:00', end: '14:00', location: 'lobby' },
+                        { start: '14:00', end: '22:00', location: 'entrance' },
+                        { start: '22:00', end: '06:00', location: 'parking' }
+                    ];
+                    
+                    shiftTimes.forEach((shift, index) => {
+                        const guardIndex = (Math.floor(date.getTime() / (1000 * 60 * 60 * 24)) + index) % guards.length;
+                        generatedShifts.push({
+                            id: `${Date.now()}_${index}_${dateStr}`,
+                            guardId: guards[guardIndex].id,
+                            date: dateStr,
+                            startTime: shift.start,
+                            endTime: shift.end,
+                            location: shift.location,
+                            status: 'scheduled',
+                            createdAt: new Date().toISOString()
+                        });
+                    });
+                } else if (pattern === 'rotating_12h') {
+                    // 2 shifts: 07:00-19:00, 19:00-07:00
+                    const shiftTimes = [
+                        { start: '07:00', end: '19:00', location: 'lobby' },
+                        { start: '19:00', end: '07:00', location: 'entrance' }
+                    ];
+                    
+                    shiftTimes.forEach((shift, index) => {
+                        const guardIndex = (Math.floor(date.getTime() / (1000 * 60 * 60 * 24)) + index) % guards.length;
+                        generatedShifts.push({
+                            id: `${Date.now()}_${index}_${dateStr}`,
+                            guardId: guards[guardIndex].id,
+                            date: dateStr,
+                            startTime: shift.start,
+                            endTime: shift.end,
+                            location: shift.location,
+                            status: 'scheduled',
+                            createdAt: new Date().toISOString()
+                        });
+                    });
+                }
+            }
+            
+            const allShifts = [...shifts, ...generatedShifts];
+            localStorage.setItem('shifts', JSON.stringify(allShifts));
+            
+            showCustomModal(`${generatedShifts.length} shift berhasil digenerate!`, 'success');
+            document.getElementById('autoGenerateForm').reset();
+            loadShifts();
+        }
+
+        function loadShifts() {
+            const shifts = JSON.parse(localStorage.getItem('shifts') || '[]');
+            const guards = JSON.parse(localStorage.getItem('guards') || '[]');
+            const container = document.getElementById('shiftsList');
+            
+            if (shifts.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">Belum ada shift yang dijadwalkan</p>';
+                return;
+            }
+            
+            const sortedShifts = shifts.sort((a, b) => new Date(b.date + ' ' + b.startTime) - new Date(a.date + ' ' + a.startTime));
+            
+            container.innerHTML = sortedShifts.map(shift => {
+                const guard = guards.find(g => g.id === shift.guardId);
+                const guardName = guard ? guard.name : 'Unknown';
+                
+                return `
+                    <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-300">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-user text-primary mr-2"></i>
+                                    <span class="font-semibold text-gray-900 dark:text-white">${guardName}</span>
+                                    <span class="ml-2 px-2 py-1 text-xs rounded-full ${shift.status === 'completed' ? 'bg-green-100 text-green-800' : shift.status === 'ongoing' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}">${shift.status}</span>
+                                </div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                    <div><i class="fas fa-calendar mr-2"></i>${formatDate(shift.date)}</div>
+                                    <div><i class="fas fa-clock mr-2"></i>${shift.startTime} - ${shift.endTime}</div>
+                                    <div><i class="fas fa-map-marker-alt mr-2"></i>${formatLocation(shift.location)}</div>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <button onclick="deleteShift('${shift.id}')" class="text-red-500 hover:text-red-700 transition duration-300">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function deleteShift(shiftId) {
+            showCustomModal('Apakah Anda yakin ingin menghapus shift ini?', 'question', () => {
+                const shifts = JSON.parse(localStorage.getItem('shifts') || '[]');
+                const updatedShifts = shifts.filter(shift => shift.id !== shiftId);
+                localStorage.setItem('shifts', JSON.stringify(updatedShifts));
+                loadShifts();
+                showCustomModal('Shift berhasil dihapus!', 'success');
+            });
+        }
+
+        function loadExchangeRequests() {
+            const requests = JSON.parse(localStorage.getItem('exchangeRequests') || '[]');
+            const guards = JSON.parse(localStorage.getItem('guards') || '[]');
+            const shifts = JSON.parse(localStorage.getItem('shifts') || '[]');
+            const container = document.getElementById('requestsList');
+            
+            if (requests.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">Belum ada permintaan ganti shift</p>';
+                return;
+            }
+            
+            container.innerHTML = requests.map(request => {
+                const requester = guards.find(g => g.id === request.requesterId);
+                const target = guards.find(g => g.id === request.targetGuardId);
+                const shift = shifts.find(s => s.id === request.shiftId);
+                
+                return `
+                    <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h4 class="font-semibold text-gray-900 dark:text-white">${requester ? requester.name : 'Unknown'}</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Ingin ganti shift dengan ${target ? target.name : 'Unknown'}</p>
+                            </div>
+                            <span class="px-2 py-1 text-xs rounded-full ${request.status === 'approved' ? 'bg-green-100 text-green-800' : request.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${request.status}</span>
+                        </div>
+                        
+                        ${shift ? `
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                                <div><i class="fas fa-calendar mr-2"></i>${formatDate(shift.date)}</div>
+                                <div><i class="fas fa-clock mr-2"></i>${shift.startTime} - ${shift.endTime}</div>
+                                <div><i class="fas fa-map-marker-alt mr-2"></i>${formatLocation(shift.location)}</div>
+                            </div>
+                        ` : ''}
+                        
+                        <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">${request.reason}</p>
+                        
+                        ${request.status === 'pending' ? `
+                            <div class="flex space-x-2">
+                                <button onclick="approveExchangeRequest('${request.id}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition duration-300">
+                                    <i class="fas fa-check mr-1"></i>Setujui
+                                </button>
+                                <button onclick="rejectExchangeRequest('${request.id}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition duration-300">
+                                    <i class="fas fa-times mr-1"></i>Tolak
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function approveExchangeRequest(requestId) {
+            showCustomModal('Apakah Anda yakin ingin menyetujui permintaan ini?', 'question', () => {
+                const requests = JSON.parse(localStorage.getItem('exchangeRequests') || '[]');
+                const requestIndex = requests.findIndex(r => r.id === requestId);
+                
+                if (requestIndex !== -1) {
+                    requests[requestIndex].status = 'approved';
+                    requests[requestIndex].approvedAt = new Date().toISOString();
+                    localStorage.setItem('exchangeRequests', JSON.stringify(requests));
+                    
+                    // Update the shift assignment
+                    const request = requests[requestIndex];
+                    const shifts = JSON.parse(localStorage.getItem('shifts') || '[]');
+                    const shiftIndex = shifts.findIndex(s => s.id === request.shiftId);
+                    
+                    if (shiftIndex !== -1) {
+                        shifts[shiftIndex].guardId = request.targetGuardId;
+                        localStorage.setItem('shifts', JSON.stringify(shifts));
+                    }
+                    
+                    loadExchangeRequests();
+                    showCustomModal('Permintaan berhasil disetujui!', 'success');
+                }
+            });
+        }
+
+        function rejectExchangeRequest(requestId) {
+            showCustomModal('Apakah Anda yakin ingin menolak permintaan ini?', 'question', () => {
+                const requests = JSON.parse(localStorage.getItem('exchangeRequests') || '[]');
+                const requestIndex = requests.findIndex(r => r.id === requestId);
+                
+                if (requestIndex !== -1) {
+                    requests[requestIndex].status = 'rejected';
+                    requests[requestIndex].rejectedAt = new Date().toISOString();
+                    localStorage.setItem('exchangeRequests', JSON.stringify(requests));
+                    
+                    loadExchangeRequests();
+                    showCustomModal('Permintaan telah ditolak!', 'success');
+                }
+            });
+        }
+
+        function loadAttendanceData() {
+            const attendance = JSON.parse(localStorage.getItem('attendance') || '[]');
+            const guards = JSON.parse(localStorage.getItem('guards') || '[]');
+            const container = document.getElementById('attendanceList');
+            
+            if (attendance.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">Belum ada data absensi</p>';
+                return;
+            }
+            
+            const sortedAttendance = attendance.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            container.innerHTML = sortedAttendance.map(record => {
+                const guard = guards.find(g => g.id === record.guardId);
+                const guardName = guard ? guard.name : 'Unknown';
+                
+                return `
+                    <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-user text-primary mr-2"></i>
+                                    <span class="font-semibold text-gray-900 dark:text-white">${guardName}</span>
+                                    <span class="ml-2 px-2 py-1 text-xs rounded-full ${record.type === 'clock_in' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${record.type === 'clock_in' ? 'Check In' : 'Check Out'}</span>
+                                </div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                    <div><i class="fas fa-clock mr-2"></i>${formatDateTime(record.timestamp)}</div>
+                                    ${record.notes ? `<div><i class="fas fa-sticky-note mr-2"></i>${record.notes}</div>` : ''}
+                                </div>
+                            </div>
+                            ${record.photoData ? `
+                                <div class="ml-4">
+                                    <img src="${record.photoData}" alt="Attendance photo" class="w-16 h-16 object-cover rounded border border-gray-300 dark:border-gray-600">
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function loadReportsData() {
+            const guards = JSON.parse(localStorage.getItem('guards') || '[]').filter(g => g.role === 'guard');
+            const attendance = JSON.parse(localStorage.getItem('attendance') || '[]');
+            const requests = JSON.parse(localStorage.getItem('exchangeRequests') || '[]');
+            
+            // Update statistics
+            document.getElementById('totalGuards').textContent = guards.length;
+            
+            const today = new Date().toISOString().split('T')[0];
+            const todayAttendance = attendance.filter(a => a.timestamp.startsWith(today));
+            const uniqueGuardsToday = [...new Set(todayAttendance.map(a => a.guardId))].length;
+            document.getElementById('todayPresent').textContent = uniqueGuardsToday;
+            
+            const pendingRequests = requests.filter(r => r.status === 'pending').length;
+            document.getElementById('pendingRequests').textContent = pendingRequests;
+            
+            // Generate weekly report
+            const weeklyContainer = document.getElementById('weeklyReport');
+            const weekDays = [];
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                weekDays.push(date.toISOString().split('T')[0]);
+            }
+            
+            weeklyContainer.innerHTML = weekDays.map(date => {
+                const dayAttendance = attendance.filter(a => a.timestamp.startsWith(date));
+                const uniqueGuards = [...new Set(dayAttendance.map(a => a.guardId))].length;
+                
+                return `
+                    <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-600">
+                        <span class="text-gray-900 dark:text-white">${formatDate(date)}</span>
+                        <span class="text-gray-600 dark:text-gray-400">${uniqueGuards}/${guards.length} satpam hadir</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function loadAdminData() {
+            loadShifts();
+            loadExchangeRequests();
+            loadAttendanceData();
+            loadReportsData();
+        }
+
+        // Guard functions
+        function showGuardTab(tabName) {
+            // Hide all guard tabs
+            const tabs = document.querySelectorAll('.guard-tab-content');
+            tabs.forEach(tab => tab.classList.add('hidden'));
+            
+            // Show selected tab
+            document.getElementById(`guard${tabName.charAt(0).toUpperCase() + tabName.slice(1)}Tab`).classList.remove('hidden');
+            
+            // Update desktop tab buttons
+            const buttons = document.querySelectorAll('.guard-tab-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('border-primary', 'text-primary');
+                btn.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400', 'dark:hover:text-gray-300');
+            });
+            
+            // Update mobile tab buttons
+            const mobileButtons = document.querySelectorAll('.guard-mobile-tab');
+            mobileButtons.forEach(btn => {
+                btn.classList.remove('border-primary', 'text-primary');
+                btn.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+            });
+            
+            // Set active state for clicked button
+            if (event.target.closest('.guard-tab-btn')) {
+                event.target.closest('.guard-tab-btn').classList.add('border-primary', 'text-primary');
+                event.target.closest('.guard-tab-btn').classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400', 'dark:hover:text-gray-300');
+            } else if (event.target.closest('.guard-mobile-tab')) {
+                event.target.closest('.guard-mobile-tab').classList.add('border-primary', 'text-primary');
+                event.target.closest('.guard-mobile-tab').classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+            }
+            
+            // Load tab-specific data
+            if (tabName === 'schedule') loadGuardSchedule();
+            else if (tabName === 'attendance') loadGuardAttendanceHistory();
+            else if (tabName === 'exchange') loadGuardExchangeData();
+            else if (tabName === 'info') loadGuardInfo();
+        }
+
+        function loadGuardSchedule() {
+            const shifts = JSON.parse(localStorage.getItem('shifts') || '[]');
+            const userShifts = shifts.filter(s => s.guardId === currentUser.id);
+            
+            const today = new Date().toISOString().split('T')[0];
+            const todayShift = userShifts.find(s => s.date === today);
+            
+            const todayContainer = document.getElementById('todayShift');
+            
+            if (todayShift) {
+                todayContainer.innerHTML = `
+                    <div class="bg-primary bg-opacity-10 border border-primary rounded-lg p-4">
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-calendar-day text-primary mr-2"></i>
+                            <span class="font-semibold text-primary">Shift Hari Ini</span>
+                        </div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                            <div><i class="fas fa-clock mr-2"></i>${todayShift.startTime} - ${todayShift.endTime}</div>
+                            <div><i class="fas fa-map-marker-alt mr-2"></i>${formatLocation(todayShift.location)}</div>
+                            <div><i class="fas fa-info-circle mr-2"></i>Status: ${todayShift.status}</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                todayContainer.innerHTML = `
+                    <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-calendar-times text-4xl mb-3"></i>
+                        <p>Tidak ada shift hari ini</p>
+                    </div>
+                `;
+            }
+            
+            const upcomingShifts = userShifts
+                .filter(s => s.date > today)
+                .sort((a, b) => new Date(a.date + ' ' + a.startTime) - new Date(b.date + ' ' + b.startTime))
+                .slice(0, 5);
+            
+            const upcomingContainer = document.getElementById('upcomingShifts');
+            
+            if (upcomingShifts.length > 0) {
+                upcomingContainer.innerHTML = upcomingShifts.map(shift => `
+                    <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-3">
+                        <div class="font-medium text-gray-900 dark:text-white mb-1">${formatDate(shift.date)}</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                            <div><i class="fas fa-clock mr-2"></i>${shift.startTime} - ${shift.endTime}</div>
+                            <div><i class="fas fa-map-marker-alt mr-2"></i>${formatLocation(shift.location)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                upcomingContainer.innerHTML = `
+                    <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-calendar-plus text-4xl mb-3"></i>
+                        <p>Belum ada shift mendatang</p>
+                    </div>
+                `;
+            }
+        }
+
+        function startCamera() {
+            navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: 'user',
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                } 
+            })
+            .then(stream => {
+                mediaStream = stream;
+                const video = document.getElementById('cameraStream');
+                video.srcObject = stream;
+                video.style.display = 'block';
+                
+                document.getElementById('startCameraBtn').style.display = 'none';
+                document.getElementById('captureBtn').style.display = 'inline-block';
+                document.getElementById('photoPreview').classList.add('hidden');
+            })
+            .catch(err => {
+                console.error('Error accessing camera:', err);
+                showCustomModal('Tidak dapat mengakses kamera. Pastikan browser memiliki izin kamera.', 'error');
+            });
+        }
+
+        function capturePhoto() {
+            const video = document.getElementById('cameraStream');
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0);
+            
+            capturedPhotoData = canvas.toDataURL('image/jpeg', 0.8);
+            
+            const capturedPhoto = document.getElementById('capturedPhoto');
+            capturedPhoto.src = capturedPhotoData;
+            
+            video.style.display = 'none';
+            document.getElementById('photoPreview').classList.remove('hidden');
+            document.getElementById('captureBtn').style.display = 'none';
+            document.getElementById('retakeBtn').style.display = 'inline-block';
+            document.getElementById('submitAttendanceBtn').disabled = false;
+            
+            // Stop camera stream
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+        }
+
+        function retakePhoto() {
+            capturedPhotoData = null;
+            document.getElementById('photoPreview').classList.add('hidden');
+            document.getElementById('retakeBtn').style.display = 'none';
+            document.getElementById('startCameraBtn').style.display = 'inline-block';
+            document.getElementById('submitAttendanceBtn').disabled = true;
+        }
+
+        function handleAttendance(e) {
+            e.preventDefault();
+            
+            if (!capturedPhotoData) {
+                showCustomModal('Silakan ambil foto terlebih dahulu!', 'error');
+                return;
+            }
+            
+            const attendance = JSON.parse(localStorage.getItem('attendance') || '[]');
+            const newAttendance = {
+                id: Date.now().toString(),
+                guardId: currentUser.id,
+                type: document.getElementById('attendanceType').value,
+                timestamp: new Date().toISOString(),
+                photoData: capturedPhotoData,
+                notes: document.getElementById('attendanceNotes').value,
+                location: 'Mobile App'
+            };
+            
+            attendance.push(newAttendance);
+            localStorage.setItem('attendance', JSON.stringify(attendance));
+            
+            showCustomModal('Absensi berhasil disimpan!', 'success');
+            
+            // Reset form
+            document.getElementById('attendanceForm').reset();
+            retakePhoto();
+            loadGuardAttendanceHistory();
+        }
+
+        function loadGuardAttendanceHistory() {
+            const attendance = JSON.parse(localStorage.getItem('attendance') || '[]');
+            const userAttendance = attendance
+                .filter(a => a.guardId === currentUser.id)
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                .slice(0, 10);
+            
+            const container = document.getElementById('attendanceHistory');
+            
+            if (userAttendance.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">Belum ada riwayat absensi</p>';
+                return;
+            }
+            
+            container.innerHTML = userAttendance.map(record => `
+                <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center mb-2">
+                                <span class="px-2 py-1 text-xs rounded-full ${record.type === 'clock_in' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${record.type === 'clock_in' ? 'Check In' : 'Check Out'}</span>
+                            </div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                <div><i class="fas fa-clock mr-2"></i>${formatDateTime(record.timestamp)}</div>
+                                ${record.notes ? `<div><i class="fas fa-sticky-note mr-2"></i>${record.notes}</div>` : ''}
+                            </div>
+                        </div>
+                        ${record.photoData ? `
+                            <div class="ml-4">
+                                <img src="${record.photoData}" alt="Attendance photo" class="w-16 h-16 object-cover rounded border border-gray-300 dark:border-gray-600">
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function loadGuardExchangeData() {
+            // Load user's shifts for exchange options
+            const shifts = JSON.parse(localStorage.getItem('shifts') || '[]');
+            const userShifts = shifts.filter(s => s.guardId === currentUser.id && s.date >= new Date().toISOString().split('T')[0]);
+            
+            const shiftSelect = document.getElementById('exchangeShiftId');
+            shiftSelect.innerHTML = '<option value="">Pilih shift</option>' + 
+                userShifts.map(shift => `
+                    <option value="${shift.id}">${formatDate(shift.date)} - ${shift.startTime} - ${formatLocation(shift.location)}</option>
+                `).join('');
+            
+            // Load user's exchange requests
+            const requests = JSON.parse(localStorage.getItem('exchangeRequests') || '[]');
+            const userRequests = requests.filter(r => r.requesterId === currentUser.id);
+            const guards = JSON.parse(localStorage.getItem('guards') || '[]');
+            
+            const container = document.getElementById('myExchangeRequests');
+            
+            if (userRequests.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">Belum ada permintaan ganti shift</p>';
+                return;
+            }
+            
+            container.innerHTML = userRequests.map(request => {
+                const targetGuard = guards.find(g => g.id === request.targetGuardId);
+                const shift = shifts.find(s => s.id === request.shiftId);
+                
+                return `
+                    <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h4 class="font-semibold text-gray-900 dark:text-white">Ganti dengan ${targetGuard ? targetGuard.name : 'Unknown'}</h4>
+                                ${shift ? `<p class="text-sm text-gray-600 dark:text-gray-400">${formatDate(shift.date)} - ${shift.startTime}</p>` : ''}
+                            </div>
+                            <span class="px-2 py-1 text-xs rounded-full ${request.status === 'approved' ? 'bg-green-100 text-green-800' : request.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${request.status}</span>
+                        </div>
+                        <p class="text-sm text-gray-700 dark:text-gray-300">${request.reason}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleExchangeRequest(e) {
+            e.preventDefault();
+            
+            const requests = JSON.parse(localStorage.getItem('exchangeRequests') || '[]');
+            const newRequest = {
+                id: Date.now().toString(),
+                requesterId: currentUser.id,
+                shiftId: document.getElementById('exchangeShiftId').value,
+                targetGuardId: document.getElementById('exchangeWithGuard').value,
+                reason: document.getElementById('exchangeReason').value,
+                status: 'pending',
+                createdAt: new Date().toISOString()
+            };
+            
+            requests.push(newRequest);
+            localStorage.setItem('exchangeRequests', JSON.stringify(requests));
+            
+            showCustomModal('Permintaan ganti shift berhasil dikirim!', 'success');
+            document.getElementById('exchangeRequestForm').reset();
+            loadGuardExchangeData();
+        }
+
+        function loadGuardInfo() {
+            const profileContainer = document.getElementById('guardProfile');
+            
+            profileContainer.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex items-center">
+                        <i class="fas fa-id-card text-primary mr-3"></i>
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">ID Pegawai</p>
+                            <p class="font-medium text-gray-900 dark:text-white">${currentUser.id}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-user text-primary mr-3"></i>
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Nama Lengkap</p>
+                            <p class="font-medium text-gray-900 dark:text-white">${currentUser.name}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-phone text-primary mr-3"></i>
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">No. Telepon</p>
+                            <p class="font-medium text-gray-900 dark:text-white">${currentUser.phone || 'Belum diatur'}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-envelope text-primary mr-3"></i>
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Email</p>
+                            <p class="font-medium text-gray-900 dark:text-white">${currentUser.email || 'Belum diatur'}</p>
+                        </div>
+                    </div>
+                    ${currentUser.joinDate ? `
+                        <div class="flex items-center">
+                            <i class="fas fa-calendar-plus text-primary mr-3"></i>
+                            <div>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Bergabung Sejak</p>
+                                <p class="font-medium text-gray-900 dark:text-white">${formatDate(currentUser.joinDate)}</p>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function loadGuardData() {
+            loadGuardSchedule();
+            loadGuardAttendanceHistory();
+            loadGuardExchangeData();
+            loadGuardInfo();
+        }
+
+        // Utility functions
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+            return date.toLocaleDateString('id-ID', options);
+        }
+
+        function formatDateTime(dateTimeString) {
+            const date = new Date(dateTimeString);
+            const options = {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            return date.toLocaleDateString('id-ID', options);
+        }
+
+        function formatLocation(location) {
+            const locationMap = {
+                'lobby': 'Lobby Utama',
+                'parking': 'Area Parkir',
+                'entrance': 'Pintu Masuk Utama',
+                'backyard': 'Halaman Belakang'
+            };
+            return locationMap[location] || location;
+        }
+
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swCode = `
+                    const CACHE_NAME = 'shift-satpam-v1';
+                    const urlsToCache = [
+                        '/',
+                        '/offline.html'
+                    ];
+
+                    self.addEventListener('install', event => {
+                        event.waitUntil(
+                            caches.open(CACHE_NAME)
+                                .then(cache => cache.addAll(urlsToCache))
+                        );
+                    });
+
+                    self.addEventListener('fetch', event => {
+                        event.respondWith(
+                            caches.match(event.request)
+                                .then(response => {
+                                    if (response) {
+                                        return response;
+                                    }
+                                    return fetch(event.request);
+                                })
+                        );
+                    });
+                `;
+
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+
+                navigator.serviceWorker.register(swUrl)
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
